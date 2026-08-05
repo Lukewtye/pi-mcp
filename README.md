@@ -108,16 +108,16 @@ systemctl --user enable --now pi-mcp.service
 Expose it over Tailscale:
 
 ```sh
-tailscale serve --bg --https=<port> 8799     # tailnet only
-tailscale funnel --bg --https=<port> 8799    # public; understand the section above first
+tailscale serve --bg --https=<port>      # tailnet only
+tailscale funnel --bg --https=<port>     # public; understand the section above first
 ```
 
 Verify:
 
 ```sh
-curl -s -o /dev/null -w '%{http_code}\n' http://127.0.0.1:8799/mcp                          # 401
+curl -s -o /dev/null -w '%{http_code}\n' http://127.0.0.1:<port>/mcp                          # 401
 curl -s -o /dev/null -w '%{http_code}\n' -H "Authorization: Bearer $TOKEN" \
-     http://127.0.0.1:8799/mcp                                                              # 406
+     http://127.0.0.1:<port>/mcp                                                              # 406
 ```
 
 401 without a token and 406 with one is the correct result.
