@@ -1,0 +1,7 @@
+[Unit]
+Description=pi-mcp liveness check to uptime-kuma
+After=pi-mcp.service
+
+[Service]
+Type=oneshot
+ExecStart=/home/luketye/pi-mcp/healthcheck.sh

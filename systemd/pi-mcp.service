@@ -1,0 +1,23 @@
+[Unit]
+[Unit]
+Description=pi-mcp MCP server (Streamable HTTP, loopback, bearer-gated)
+After=network-online.target
+Wants=network-online.target
+StartLimitBurst=5
+StartLimitIntervalSec=60
+
+[Service]
+Type=simple
+WorkingDirectory=/home/luketye/pi-mcp
+EnvironmentFile=/home/luketye/pi-mcp/pi-mcp.env
+Environment=HOME=/home/luketye
+Environment=PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+ExecStart=/home/luketye/pi-mcp/.venv/bin/python /home/luketye/pi-mcp/pi_mcp.py --http --port 8799
+Restart=always
+RestartSec=3
+StandardOutput=journal
+StandardError=journal
+
+
+[Install]
+WantedBy=default.target
