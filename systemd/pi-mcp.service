@@ -1,5 +1,4 @@
 [Unit]
-[Unit]
 Description=pi-mcp MCP server (Streamable HTTP, loopback, bearer-gated)
 After=network-online.target
 Wants=network-online.target
