@@ -1,10 +1,10 @@
-# pi-mcp
+## pi-mcp
 
 An MCP server that exposes a small, controlled set of operations on a Raspberry Pi to an LLM client over authenticated HTTP.
 
 Three tools: a read-only host health snapshot, a shell exec with output capping and UTF-8 hardening, and a single-container Docker restart with name validation. It runs as a systemd user unit bound to loopback, behind a bearer gate, reachable over a Tailscale private network.
 
-This is a single-user homelab service, not a product. It is published because the debugging is more interesting than the code.
+This is a single-user homelab service, not a product. I wanted to publish it because the debugging is more interesting than the code.
 
 
 ## Why it exists
@@ -26,7 +26,7 @@ Three layers, in order:
 2. Host validation. The MCP SDK's DNS-rebinding protection is left enabled, with the public hostname supplied through an environment variable rather than hardcoded. Disabling it was considered and rejected: on a reachable endpoint it is a real second layer.
 3. Network scope. Tailnet-only by default. Public exposure is opt-in, per-port, and off unless actively needed.
 
-### What it does not do
+## What it does not do
 
 - The token is static. No rotation, no expiry, no revocation list. Rotation currently means editing an environment file and restarting.
 - No rate limiting on authentication attempts.
@@ -37,7 +37,7 @@ Mitigations that were deliberately chosen over alternatives: the secret is never
 
 ## Operations
 
-A liveness monitor runs every 60 seconds on a systemd timer. It is a push monitor rather than an HTTP check, for a specific reason: the monitoring container sits on a Docker bridge network, while the service binds loopback. No container-side address can reach a loopback socket — including `host.docker.internal`, which resolves the host gateway correctly and still cannot connect. Inverting the direction, so a host-side script performs the check and pushes the result out, keeps the loopback bind intact and keeps the bearer token out of the monitoring system's database.
+A liveness monitor runs every 60 seconds on a systemd timer. It is a push monitor rather than an HTTP check, for a specific reason: the monitoring container sits on a Docker bridge network, while the service binds loopback. No container-side address can reach a loopback socket, including `host.docker.internal`, which resolves the host gateway correctly and still cannot connect. Inverting the direction, so a host-side script performs the check and pushes the result out, keeps the loopback bind intact and keeps the bearer token out of the monitoring system's database.
 
 A healthy response is HTTP 406, not 200. A bare request with a valid token passes the bearer gate and is then refused by the MCP transport for lacking the right `Accept` header. That makes 406 a strictly better liveness signal than 200 would be: it proves authentication ran and the application is processing requests. A monitor configured to expect 200 would alarm continuously against a perfectly healthy service.
 
@@ -54,7 +54,7 @@ That asymmetry was the clue, meaning something was rejecting the request after t
 
 Fixed by passing explicit settings with the public host appended from an environment variable, protection left on.
 
-### A systemd unit file missing its section header
+## A systemd unit file missing its section header
 
 Running `systemd-analyze verify` on a newly added unit reported errors in a different file: the long-running service it declared an `After=` dependency on. That file had no `[Unit]` header, so `Description`, `After`, `Wants=network-online.target`, and both start-rate-limit directives had been silently discarded since the day it was written.
 
@@ -62,7 +62,7 @@ The service ran fine, because `[Service]` and `[Install]` were intact. Nothing a
 
 Two lessons: `systemd-analyze verify` validates the graph, not just the file you name, and "it runs" is not evidence that a config file was parsed the way you intended.
 
-### An unpinned install that fails at import
+## An unpinned install that fails at import
 
 `pip install mcp uvicorn` without version pins resolves to `mcp` 2.0.0, which does not contain `FastMCP` at all — the 2.x line restructured the package. The failure is a hard `ModuleNotFoundError` at import, not a subtle behaviour change.
 
@@ -72,7 +72,7 @@ The repo carries both a `requirements.txt` naming the two direct dependencies an
 
 ```
 pi_mcp.py                        server and tool definitions
-healthcheck.sh                   liveness probe, pushes to the monitoring system
+healthcheck.sh                   liveness probe, pushes to the monitoring system i.e. uptime kuma
 requirements.txt                 direct dependencies, pinned
 requirements.lock.txt            full resolved closure
 systemd/pi-mcp.service           the service unit
@@ -80,45 +80,6 @@ systemd/pi-mcp-health.service    oneshot probe unit
 systemd/pi-mcp-health.timer      60s schedule for the probe
 ```
 
-## Running it
-
-Requires Python 3.13, a virtualenv (Debian's Python is PEP 668-managed), and a Tailscale node.
-
-```sh
-python3 -m venv .venv
-.venv/bin/pip install -r requirements.lock.txt
-```
-
-Create an environment file, mode `600`:
-
-```
-PI_MODE=local
-PI_MCP_TOKEN=<at least 32 characters, generated, not chosen>
-PI_MCP_PUBLIC_HOST=<your-tailscale-hostname>:<port>
-```
-
-Install the units under `~/.config/systemd/user/`, adjusting paths, then:
-
-```sh
-loginctl enable-linger "$USER"
-systemctl --user daemon-reload
-systemctl --user enable --now pi-mcp.service
-```
-
-Expose it over Tailscale:
-
-```sh
-tailscale serve --bg --https=<port>      # tailnet only
-tailscale funnel --bg --https=<port>     # public; understand the section above first
-```
-
-Verify:
-
-```sh
-curl -s -o /dev/null -w '%{http_code}\n' http://127.0.0.1:<port>/mcp                          # 401
-curl -s -o /dev/null -w '%{http_code}\n' -H "Authorization: Bearer $TOKEN" \
-     http://127.0.0.1:<port>/mcp                                                              # 406
-```
 
 401 without a token and 406 with one is the correct result.
 
