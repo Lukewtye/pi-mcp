@@ -92,7 +92,7 @@ def _argv(command: str, timeout: int) -> list[str]:
     ]
 
 
-def _run(command: str, timeout: int = DEFAULT_TIMEOUT) -> dict:
+async def _run(command: str, timeout: int = DEFAULT_TIMEOUT) -> dict:
     """Run one command, locally or on the Pi. Never raises, never prompts."""
     host = "localhost" if PI_MODE == "local" else PI_HOST
 
@@ -104,7 +104,12 @@ def _run(command: str, timeout: int = DEFAULT_TIMEOUT) -> dict:
         # encoding= puts the streams in text mode; errors="replace" keeps
         # non-UTF-8 output from raising UnicodeDecodeError out of this call.
         # Explicit utf-8 avoids depending on whatever locale the parent had.
-        p = subprocess.run(
+        # Runs in a worker thread so this blocking call can't stall the
+        # asyncio event loop -- otherwise a long command here also blocks
+        # unrelated concurrent HTTP requests (e.g. a health check) until
+        # it returns.
+        p = await asyncio.to_thread(
+            subprocess.run,
             _argv(command, timeout),
             capture_output=True,
             timeout=timeout,
@@ -128,7 +133,7 @@ def _run(command: str, timeout: int = DEFAULT_TIMEOUT) -> dict:
 
 
 @mcp.tool()
-def pi_status() -> str:
+async def pi_status() -> str:
     """Read-only health snapshot of the Raspberry Pi: uptime, load, memory,
     disk usage, CPU temperature, and running Docker containers."""
     cmd = (
@@ -141,21 +146,21 @@ def pi_status() -> str:
         "echo '== docker =='; (docker ps --format '{{.Names}}\t{{.Status}}' 2>/dev/null "
         "|| echo 'docker unavailable')"
     )
-    return json.dumps(_run(cmd, 15), indent=2)
+    return json.dumps(await _run(cmd, 15), indent=2)
 
 
 @mcp.tool()
-def pi_exec(command: str, timeout: int = 30) -> str:
+async def pi_exec(command: str, timeout: int = 30) -> str:
     """Run a shell command on the Raspberry Pi and return exit code, stdout,
     and stderr as JSON. `timeout` is in seconds and is clamped to 1-120;
     larger values are silently reduced. Output is capped at 20,000 characters
     per stream."""
     timeout = max(1, min(int(timeout), 120))
-    return json.dumps(_run(command, timeout), indent=2)
+    return json.dumps(await _run(command, timeout), indent=2)
 
 
 @mcp.tool()
-def pi_docker_restart(container: str) -> str:
+async def pi_docker_restart(container: str) -> str:
     """Restart a single Docker container by exact name, then return its fresh
     status. The name must match Docker's charset: alphanumeric first
     character, then alphanumerics, underscore, dot, or hyphen."""
@@ -176,7 +181,7 @@ def pi_docker_restart(container: str) -> str:
         f"docker ps --filter {shlex.quote(anchored)} "
         f"--format '{{{{.Names}}}}\t{{{{.Status}}}}'"
     )
-    return json.dumps(_run(cmd, 60), indent=2)
+    return json.dumps(await _run(cmd, 60), indent=2)
 
 
 class _BearerAuth:
