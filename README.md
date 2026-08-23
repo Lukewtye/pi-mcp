@@ -4,7 +4,7 @@ An MCP server that exposes a small, controlled set of operations on a Raspberry 
 
 Three tools: a read-only host health snapshot, a shell exec with output capping and UTF-8 hardening, and a single-container Docker restart with name validation. It runs as a systemd user unit bound to loopback, behind a bearer gate, reachable over a Tailscale private network.
 
-This is a single-user homelab service, not a product. I wanted to publish it because the debugging is more interesting than the code.
+This is a single-user homelab service, not a product. I wanted to publish it to document my progress.
 
 
 ## Why it exists
