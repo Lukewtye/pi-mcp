@@ -51,13 +51,21 @@ _DOCKER_NAME = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9_.-]*$")
 _LOOPBACK_HOSTS = ["127.0.0.1:*", "localhost:*", "[::1]:*"]
 _LOOPBACK_ORIGINS = ["http://127.0.0.1:*", "http://localhost:*", "http://[::1]:*"]
 
-_PUBLIC_HOST = os.environ.get("PI_MCP_PUBLIC_HOST", "").strip()
+# Comma-separated list. This server sits behind two fronts: the Tailscale
+# MagicDNS name and the Cloudflare tunnel hostname. Which one a client uses
+# depends on whether its network passes WireGuard, so both must be allowed.
+# A host that is missing here gets 421 from DNS-rebinding protection.
+_PUBLIC_HOSTS = [
+    h.strip()
+    for h in os.environ.get("PI_MCP_PUBLIC_HOST", "").split(",")
+    if h.strip()
+]
 
 _allowed_hosts = list(_LOOPBACK_HOSTS)
 _allowed_origins = list(_LOOPBACK_ORIGINS)
-if _PUBLIC_HOST:
-    _allowed_hosts += [_PUBLIC_HOST, f"{_PUBLIC_HOST}:*"]
-    _allowed_origins += [f"https://{_PUBLIC_HOST}", f"https://{_PUBLIC_HOST}:*"]
+for _host in _PUBLIC_HOSTS:
+    _allowed_hosts += [_host, f"{_host}:*"]
+    _allowed_origins += [f"https://{_host}", f"https://{_host}:*"]
 
 mcp = FastMCP(
     "raspberry-pi",
