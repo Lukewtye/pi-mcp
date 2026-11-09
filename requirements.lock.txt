@@ -1,4 +1,5 @@
 # Generated on lukepi (Debian 13, Python 3.13.5, pip 26.2) 2026-08-04
+# Updated 2026-11-09: mcp 1.28.1 -> 1.30.0 for CVE-2026-59951 (session leak).
 # Full resolved closure, 29 packages. Install with:
 #   pip install -r requirements.lock.txt
 # Do NOT run an unpinned "pip install mcp uvicorn": it resolves to mcp 2.0.0,
@@ -18,7 +19,7 @@ httpx-sse==0.4.3
 idna==3.18
 jsonschema==4.26.0
 jsonschema-specifications==2025.9.1
-mcp==1.28.1
+mcp==1.30.0
 pycparser==3.0
 pydantic==2.13.4
 pydantic-settings==2.14.2
