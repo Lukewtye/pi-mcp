@@ -69,6 +69,7 @@ for _host in _PUBLIC_HOSTS:
 
 mcp = FastMCP(
     "raspberry-pi",
+    stateless_http=True,
     transport_security=TransportSecuritySettings(
         enable_dns_rebinding_protection=True,
         allowed_hosts=_allowed_hosts,
